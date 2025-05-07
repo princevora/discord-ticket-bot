@@ -30,6 +30,7 @@ use Discord\Parts\Embed\Embed;
 use Sqlite\Connection;
 use Discord\Discord;
 use PDO;
+use const Discord\COLORTABLE;
 
 class Setup extends CommandAbstract
 {
@@ -101,15 +102,45 @@ class Setup extends CommandAbstract
         );
     }
 
+    /**
+     * @param \Discord\Parts\Interactions\Interaction $interaction
+     * @return \React\Promise\PromiseInterface
+     */
     public function buttonHandler(Interaction $interaction)
     {
         // Create a channel with the name of the interacted user
         $name = 'tkt' . substr($interaction->member->username, 0, 4) . rand(1000, 9999);
         $guild = $interaction->guild;
-
-        // Check if the user has already created a ticket.
-
+        $member_id = $interaction->member->user->id;
         $discord = $interaction->getDiscord();
+
+        $stmt = "SELECT * FROM TICKETS WHERE user_id = ? AND is_closed = 0 ORDER BY created_at DESC LIMIT 1";
+        $stmt = $this->pdo->prepare($stmt);
+        $stmt->execute([$member_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $title = "Ticket Already Exists";
+            $description = "You already an active ticket please request the staff to close it before making a new one";
+
+            $embed = (new Embed($discord))
+                ->setTitle($title)
+                ->setDescription($description)
+                ->addFieldValues('Previous Ticket ID', $result['id'], true)
+                ->addFieldValues('Created At', date('D-M-Y', strtotime($result['created_at'])), true)
+                ->addFieldValues('Is Closed', ((bool) $result['is_closed']) ? 'Closed' : 'Not Closed', true)
+                ->setColor('#c22121')
+                ->setTimestamp();
+
+            var_dump('Cam herere ');
+
+            $message = (new MessageBuilder())
+                ->addEmbed($embed);
+
+            return $interaction->respondWithMessage($message, true);
+        }
+
+        // create a ticket for the user and store in db.
         $channel = new Channel($discord);
         $channel->name = $name;
         $channel->parent_id = $_ENV['TICKETS_CATEGORY_ID'];
@@ -121,20 +152,54 @@ class Setup extends CommandAbstract
                 'deny' => Permission::ALL_PERMISSIONS['view_channel']
             ],
             [
-                'id' => $interaction->member->id,
+                'id' => $member_id,
                 'type' => 1,
                 'allow' => Permission::ALL_PERMISSIONS['view_channel'],
             ],
         ];
-        
+
         $interaction->guild
             ->channels
             ->save($channel)
-            ->then(function (Channel $channel) use ($interaction) {
-                $channelMessage = (new MessageBuilder())
-                    ->setContent("<@{$interaction->member->user->id}> Your Ticket Is here");
+            ->then(function (Channel $channel) use ($member_id, $discord) {
+                $stmt = "INSERT INTO tickets (user_id, channel_id, channel_name) VALUES (?, ?, ?)";
+                $stmt = $this->pdo->prepare($stmt);
+                $stmt->execute([$member_id, $channel->id, $channel->name]);
+                $stmt->fetch();
 
-                $channel->sendMessage($channelMessage);
+                $title = "Support Ticket";
+                $description = "This is support ticket, support staff will be in touch shortly";
+                $mention = "<@{$member_id}>";
+
+                $embed = (new Embed($discord))
+                    ->setTitle($title)
+                    ->setDescription($description)
+                    ->addFieldValues('Created By', $mention, true)
+                    ->addFieldValues('Ticket ID', $channel->id, true)
+                    ->addFieldValues('Created At', date('D-M-Y'), true)
+                    ->setTimestamp();
+
+                $actionButton = (new ActionRow())
+                    ->addComponent(
+                        (new Button(Button::STYLE_DANGER))
+                            ->setLabel('Close ticket 🔐')
+                            ->setCustomId('action_close_ticket')
+                    );
+
+                $channelMessage = (new MessageBuilder())
+                    ->addEmbed($embed)
+                    ->addComponent($actionButton)
+                    ->setContent("<@{$member_id}>");
+
+                $channel->sendMessage($channelMessage, true);
+            })
+            ->catch(function () use ($interaction) {
+                $message = "Unable to create a ticket, Something went wrong.";
+
+                return $interaction->respondWithMessage(
+                    (new MessageBuilder())
+                        ->setContent($message)
+                );
             });
 
 

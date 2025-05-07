@@ -2,7 +2,8 @@
 namespace Classes;
 
 use Commands\{
-    Setup
+    Setup,
+    Close
 };
 
 class ButtonsMap
@@ -18,6 +19,10 @@ class ButtonsMap
             'action_create_ticket' => [
                 'file' => __DIR__ . self::COMMANDS_DIR . 'add.php',
                 'execute' => Setup::class
+            ],
+            'action_close_ticket' => [
+                'file' => __DIR__ . self::COMMANDS_DIR . 'add.php',
+                'execute' => Close::class
             ],
         ];
     }

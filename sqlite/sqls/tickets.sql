@@ -1,6 +1,9 @@
 CREATE TABLE tickets (
-    id BINARY(16) PRIMARY KEY DEFAULT (UNHEX(REPLACE(UUID(), '-', ''))),
-    user_id BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id INTEGER NOT NULL,
+    is_closed INTEGER NOT NULL DEFAULT 0,
+    channel_id INTEGER NOT NULL DEFAULT 0,
+    channel_name TEXT NOT NULL DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
