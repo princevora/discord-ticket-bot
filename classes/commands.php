@@ -5,7 +5,8 @@ use Commands\{
     Add,
     Setup,
     Close,
-    Remove
+    Remove,
+    NewCommand
 };
 
 class CommandsMap
@@ -21,7 +22,8 @@ class CommandsMap
             'add' => Add::class,
             'setup' => Setup::class,
             'close' => Close::class,
-            'remove' => Remove::class
+            'remove' => Remove::class,
+            'new'   => NewCommand::class 
         ];
     }
 }

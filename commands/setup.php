@@ -70,11 +70,6 @@ class Setup extends CommandAbstract
     public function execute(Interaction $interaction): \React\Promise\PromiseInterface
     {
         $discord = $interaction->getDiscord();
-
-        $total = $this->pdo
-            ->query("SELECT COUNT(*) FROM tickets")
-            ->fetchColumn();
-
         $embed = (new Embed($discord))
             ->setTitle('Ticket Creation')
             ->setDescription('Click the button below to create a private support ticket. Our team will assist you as soon as possible. Please describe your issue clearly in the ticket channel that appears.')
@@ -106,12 +101,17 @@ class Setup extends CommandAbstract
      * @param \Discord\Parts\Interactions\Interaction $interaction
      * @return \React\Promise\PromiseInterface
      */
-    public function buttonHandler(Interaction $interaction)
+    public function buttonHandler(Interaction $interaction, $isUsingNewCommand = false)
     {
         // Create a channel with the name of the interacted user
         $name = 'tkt' . substr($interaction->member->username, 0, 4) . rand(1000, 9999);
         $guild = $interaction->guild;
         $member_id = $interaction->member->user->id;
+        
+        if ($isUsingNewCommand) {
+            $member_id = $interaction->data->options->get('name', 'user')?->value;
+        }
+
         $discord = $interaction->getDiscord();
 
         $stmt = "SELECT * FROM TICKETS WHERE user_id = ? AND is_closed = 0 ORDER BY created_at DESC LIMIT 1";
@@ -139,7 +139,7 @@ class Setup extends CommandAbstract
 
             return $interaction->respondWithMessage($message, true);
         }
-        
+
         // Create a ticket channel under a specific category and store in DB
         $channel = new Channel($discord);
         $channel->name = $name;
@@ -152,7 +152,7 @@ class Setup extends CommandAbstract
                 'allow' => 0
             ],
             [
-                'id' => $interaction->member->id, // Ticket creator
+                'id' => $member_id, // Ticket creator
                 'type' => 1, // Member
                 'allow' => 3072, // Allow view channel (1024) + send messages (2048)
                 'deny' => 0
