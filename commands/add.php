@@ -70,9 +70,12 @@ class Add extends CommandAbstract
 
         $userExists = array_filter(
             $channel->permission_overwrites,
-            fn($permission) => $permission['id'] === $memberToAdd && $permission['type'] == 1
+            fn($permission) =>
+            $permission['id'] === $memberToAdd &&
+            $permission['type'] == 1 &&
+            (($permission['allow'] ?? 0) & 1024) === 1024
         );
-        
+
         if (count($userExists) > 0) {
             $title = "Already Exists";
             $description = "The member <@{$memberToAdd}> is already in the channel. Please select other one.";

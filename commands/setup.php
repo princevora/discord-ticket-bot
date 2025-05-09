@@ -87,14 +87,15 @@ class Setup extends CommandAbstract
             ->addEmbed($embed)
             ->addComponent($actionButton);
 
-        $channel = $discord->getChannel($_ENV['DISCORD_TICKET_CHANNEL']);
-        $channel->sendMessage($ticketEmbed);
-
-        return $interaction->respondWithMessage(
+        // Respond to interaction immediately (ephemeral = true)
+        $interaction->respondWithMessage(
             (new MessageBuilder())
-                ->setContent('The ticket creation post has been sent successfully. Users Can create the tickets now.'),
+                ->setContent('The ticket creation post is being sent...'),
             true
         );
+
+        $channel = $discord->getChannel($_ENV['DISCORD_TICKET_CHANNEL']);
+        return $channel->sendMessage($ticketEmbed);
     }
 
     /**
@@ -107,7 +108,7 @@ class Setup extends CommandAbstract
         $name = 'tkt' . substr($interaction->member->username, 0, 4) . rand(1000, 9999);
         $guild = $interaction->guild;
         $member_id = $interaction->member->user->id;
-        
+
         if ($isUsingNewCommand) {
             $member_id = $interaction->data->options->get('name', 'user')?->value;
         }
@@ -144,6 +145,7 @@ class Setup extends CommandAbstract
         $channel = new Channel($discord);
         $channel->name = $name;
         $channel->parent_id = $_ENV['TICKETS_CATEGORY_ID'];
+        $channel->type = Channel::TYPE_TEXT;
         $channel->permission_overwrites = [
             [
                 'id' => $guild->id, // @everyone

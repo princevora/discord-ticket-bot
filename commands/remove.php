@@ -68,11 +68,14 @@ class Remove extends CommandAbstract
 
         $userExists = array_filter(
             $channel->permission_overwrites,
-            fn($permission) => $permission['id'] === $memberToAdd && $permission['type'] == 1
+            fn($permission) =>
+            $permission['id'] === $memberToAdd &&
+            $permission['type'] == 1 &&
+            (($permission['allow'] ?? 0) & 1024) === 1024
         );
 
-        if (count($userExists) < 0) {
-            $title = "Already Exists";
+        if (count($userExists) < 1) {
+            $title = "User Dont Exists";
             $description = "The member <@{$memberToAdd}> is not in the channel. Please select other one.";
 
             $embed = (new Embed($discord))
