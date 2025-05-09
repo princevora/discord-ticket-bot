@@ -4,7 +4,8 @@ namespace Classes;
 use Commands\{
     Add,
     Setup,
-    Close
+    Close,
+    Remove
 };
 
 class CommandsMap
@@ -19,7 +20,8 @@ class CommandsMap
         return [
             'add' => Add::class,
             'setup' => Setup::class,
-            'close' => Close::class
+            'close' => Close::class,
+            'remove' => Remove::class
         ];
     }
 }
