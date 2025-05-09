@@ -139,22 +139,23 @@ class Setup extends CommandAbstract
 
             return $interaction->respondWithMessage($message, true);
         }
-
-        // create a ticket for the user and store in db.
+        
+        // Create a ticket channel under a specific category and store in DB
         $channel = new Channel($discord);
         $channel->name = $name;
         $channel->parent_id = $_ENV['TICKETS_CATEGORY_ID'];
-        $channel->is_private = true;
         $channel->permission_overwrites = [
             [
-                'id' => $guild->id,
-                'type' => 0,
-                'deny' => Permission::ALL_PERMISSIONS['view_channel']
+                'id' => $guild->id, // @everyone
+                'type' => 0, // Role
+                'deny' => 1024, // Deny view channel
+                'allow' => 0
             ],
             [
-                'id' => $member_id,
-                'type' => 1,
-                'allow' => Permission::ALL_PERMISSIONS['view_channel'],
+                'id' => $interaction->member->id, // Ticket creator
+                'type' => 1, // Member
+                'allow' => 3072, // Allow view channel (1024) + send messages (2048)
+                'deny' => 0
             ],
         ];
 
@@ -162,13 +163,17 @@ class Setup extends CommandAbstract
             ->channels
             ->save($channel)
             ->then(function (Channel $channel) use ($member_id, $discord) {
+                $channel->is_private = true;
+
+                // Store ticket in database
                 $stmt = "INSERT INTO tickets (user_id, channel_id, channel_name) VALUES (?, ?, ?)";
                 $stmt = $this->pdo->prepare($stmt);
                 $stmt->execute([$member_id, $channel->id, $channel->name]);
                 $stmt->fetch();
 
+                // Create embed for the ticket message
                 $title = "Support Ticket";
-                $description = "This is support ticket, support staff will be in touch shortly";
+                $description = "This is a support ticket. Support staff will be in touch shortly.";
                 $mention = "<@{$member_id}>";
 
                 $embed = (new Embed($discord))
@@ -179,6 +184,7 @@ class Setup extends CommandAbstract
                     ->addFieldValues('Created At', date('D-M-Y'), true)
                     ->setTimestamp();
 
+                // Add close ticket button
                 $actionButton = (new ActionRow())
                     ->addComponent(
                         (new Button(Button::STYLE_DANGER))
@@ -186,6 +192,7 @@ class Setup extends CommandAbstract
                             ->setCustomId('action_close_ticket')
                     );
 
+                // Build and send the message
                 $channelMessage = (new MessageBuilder())
                     ->addEmbed($embed)
                     ->addComponent($actionButton)
@@ -194,14 +201,13 @@ class Setup extends CommandAbstract
                 $channel->sendMessage($channelMessage, true);
             })
             ->catch(function () use ($interaction) {
-                $message = "Unable to create a ticket, Something went wrong.";
+                $message = "Unable to create a ticket. Something went wrong.";
 
                 return $interaction->respondWithMessage(
                     (new MessageBuilder())
                         ->setContent($message)
                 );
             });
-
 
         $message = (new MessageBuilder())
             ->setContent('The ticket has been created successfully..');

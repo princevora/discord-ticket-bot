@@ -48,16 +48,62 @@ class Add extends CommandAbstract
      */
     public function execute(Interaction $interaction)
     {
-        $embed = (new Embed($interaction->getDiscord()))
-            ->setTitle('This is executed..')
-            ->setDescription('YOU HAVE gakjfgkjashfka')
-            ->addFieldValues('Name', $interaction->member->displayname, true)
-            ->addFieldValues('At time', date('d-m-y'), true)
-            ->addFieldValues('Id', $interaction->member->id, true)
-            ->setTimestamp();
+        $discord = $interaction->getDiscord();
+
+        if ($interaction->channel->parent_id !== $_ENV['TICKETS_CATEGORY_ID']) {
+            $title = "Invalid Channel";
+            $description = "You are on wrong channel, This command only works in the tickets channel of Tickets categories";
+
+            $embed = (new Embed($discord))
+                ->setTitle($title)
+                ->setDescription($description)
+                ->setColor('#c22121');
+
+            $message = (new MessageBuilder())
+                ->addEmbed($embed);
+
+            return $interaction->respondWithMessage($message, true);
+        }
+
+        $channel = $interaction->channel;
+        $memberToAdd = $interaction->data->options->get('name', 'user')?->value;
+
+        $userExists = array_filter(
+            $channel->permission_overwrites,
+            fn($permission) => $permission['id'] === $memberToAdd && $permission['type'] == 1
+        );
+        
+        if (count($userExists) > 0) {
+            $title = "Already Exists";
+            $description = "The member <@{$memberToAdd}> is already in the channel. Please select other one.";
+
+            $embed = (new Embed($discord))
+                ->setTitle($title)
+                ->setDescription($description)
+                ->setColor('#c22121');
+
+            $message = (new MessageBuilder())
+                ->addEmbed($embed);
+
+            return $interaction->respondWithMessage($message, true);
+        }
+
+        $permissionOverwrites = $channel->permission_overwrites; // Get current permissions
+
+        $permissionOverwrites[] = [
+            'id' => $memberToAdd,
+            'type' => 1,
+            'allow' => 1024,
+        ];
+
+        // Reassign the modified array to the property
+        $channel->permission_overwrites = $permissionOverwrites;
+
+        // Now save
+        $interaction->guild->channels->save($channel);
 
         $message = (new MessageBuilder())
-            ->addEmbed($embed);
+            ->setContent("User <@{$memberToAdd}> Has been Successfully added to the {$channel->name}");
 
         return $interaction->respondWithMessage($message, true);
     }
@@ -75,7 +121,7 @@ class Add extends CommandAbstract
                     ->setName('user')
                     ->setDescription('Select the User You want to add in this channel.')
                     ->setRequired(true)
-                    ->setType(Option::ROLE)
+                    ->setType(Option::USER)
             )
             ->setDefaultMemberPermissions(Permission::ALL_PERMISSIONS['manage_channels']);
 

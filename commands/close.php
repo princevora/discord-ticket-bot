@@ -105,6 +105,11 @@ class Close extends CommandAbstract
             return $interaction->respondWithMessage($message, true);
         }
     }
+
+    /**
+     * @param \Discord\Parts\Interactions\Interaction $interaction
+     * @return void
+     */
     private function closeTicket(Interaction $interaction)
     {
         $discord = $interaction->getDiscord();
